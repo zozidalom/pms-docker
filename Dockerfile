@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ARG TARGETARCH
 ARG TARGETPLATFORM
@@ -26,6 +26,7 @@ RUN \
       curl \
       xmlstarlet \
       uuid-runtime \
+      vainfo \
       unrar && \
     apt-get -y autoremove && \
     apt-get -y clean && \
