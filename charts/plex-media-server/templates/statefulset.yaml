@@ -21,10 +21,17 @@ spec:
       annotations:
         {{- toYaml .Values.statefulSet.podAnnotations | nindent 8 }}
     spec:
+      {{- if .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml .Values.dnsConfig | nindent 8 }}
+      {{- end }}
       {{- if .Values.runtimeClassName }}
       runtimeClassName: {{ .Values.runtimeClassName | quote }}
       {{- end }}
       serviceAccountName: {{ include "pms-chart.serviceAccountName" . }}
+      {{- if .Values.pms.shareProcessNamespace }}
+      shareProcessNamespace: {{ .Values.pms.shareProcessNamespace }}
+      {{- end }}
       tolerations:
         {{- toYaml .Values.tolerations | nindent 8 }}
       nodeSelector:
@@ -96,6 +103,9 @@ spec:
         - name: rclone-config
           mountPath: /out
       {{- end }}
+      {{- with .Values.extraInitContainers }}
+{{- toYaml . | nindent 6 }}
+      {{- end }}
       containers:
       - name: {{ include "pms-chart.fullname" . }}-pms
         image: {{ include "pms-chart.image" . }}
@@ -112,11 +122,26 @@ spec:
         - name: {{ $key }}
           value: {{ $value | quote }}
         {{- end }}
+        {{- if and .Values.pms.claimSecret.name .Values.pms.claimSecret.value }}
+        - name: PLEX_CLAIM
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.pms.claimSecret.name }}
+              key: {{ .Values.pms.claimSecret.key }}
+        {{- end }}
         {{- if .Values.pms.gpu.nvidia.enabled }}
         - name: NVIDIA_VISIBLE_DEVICES
           value: all
         - name: NVIDIA_DRIVER_CAPABILITIES
           value: compute,video,utility
+        {{- end }}
+        {{- with .Values.pms.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.pms.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- with .Values.pms.resources }}
         resources:
@@ -131,6 +156,10 @@ spec:
           requests:
             {{ toYaml .requests | indent 12 | trim }}
           {{- end }}
+        {{- end }}
+        {{- with .Values.pms.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         volumeMounts:
         - name: pms-config
@@ -191,7 +220,9 @@ spec:
       {{- end }}
   {{- if not .Values.pms.configExistingClaim }}
   volumeClaimTemplates:
-  - metadata:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: pms-config
     spec:
       accessModes: [ "ReadWriteOnce" ]

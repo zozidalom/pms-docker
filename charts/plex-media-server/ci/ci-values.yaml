@@ -1,0 +1,64 @@
+image:
+  tag: null
+  pullPolicy: Always
+
+global:
+  imageRegistry: ""
+
+dnsConfig: {}
+
+ingress:
+  enabled: true
+  ingressClassName: my-class
+  url: example.com
+  tls:
+  - hosts:
+    - plex.example.com
+    secretName: cert-example-com
+
+  annotations:
+    plex.tv/description: just an annotation
+
+pms:
+  configStorage: 1Gi
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  securityContext: {}
+
+  shareProcessNamespace: true
+
+service:
+  type: ClusterIP
+  port: 32400
+  annotations:
+    plex.tv/description: just an annotation
+
+priorityClassName: system-node-critical
+
+commonLabels:
+  plex.tv/name: pms
+
+extraEnv:
+  HOSTNAME: PlexServer
+  TZ: Etc/UTC
+  PLEX_UPDATE_CHANNEL: '5'
+  PLEX_UID: '1000'
+  PLEX_GID: '1000'
+  ALLOWED_NETWORKS: '0.0.0.0/0'
+
+extraVolumeMounts:
+- name: dev-dri
+  mountPath: /dev/dri
+
+extraVolumes:
+- name: dev-dri
+  hostPath:
+    path: /dev/dri
+    type: Directory
